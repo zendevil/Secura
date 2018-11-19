@@ -25,12 +25,24 @@ for c in chatrooms:
 	count += 1
 print('Pick a chatroom number:')
 chatroom = chatrooms[int(input())]
+print('Entered chatroom', chatroom.name)
+
+
+
+print(time.ctime())
+while(True):
+	msg = input('>')
+	user.sendMsg(chatroom, msg)
+	user.receiveMsgs(chatroom)
+
 
 
 # tests
 
 encrypted = user.encryptMsg(b'298134712389')
 signature = user.signMsg(encrypted)
+
+
 
 print('mac', user.computeMac(encrypted))
 

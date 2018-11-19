@@ -1,39 +1,34 @@
-class User:
-	id = ''
-	key = b''
-	def __init__(self, id):
-		self.id = id
-	def addCertificate(cert):
-		self.certificate = cert
-	def createChatRoom(chatroom):
-		sendReq(self.id, 'c', chatroom)
-	def sendMsg(chatroom, message):
-		sendReq(self.id, 'm', 'CHATROOM'chatroom+'BEGIN MESSAGE'+message)
-
-	def sendReq(userId, reqType, data):
-
-
-class ChatRoom:
-	id = ''
-	inRoom = []
-	def __init__(self, id, user):
-		self.id = id
-		self.inRoom.append(user)
-
-
-
+from user import *
 class Server: 
 	allUsers = []
 	chatRooms = []
 
+	def addUser(self, user):
+		self.allUsers.append(user)
+
+	def getChatRooms(self, user):
+		userChatrooms = []
+		for c in self.chatRooms:
+			if user.id in c.inRoom:
+				userChatrooms.append(c)
+		return userChatrooms
+
+	def createChatRoom(self, user, name):
+		chatroom = ChatRoom(name, user)
+		self.chatRooms.append(chatroom)
 
 
-s = Server()
 
-u1 = User('1223')
-c1 = ChatRoom(u1)
+chatroomIdCounter = 0
+class ChatRoom:
+	name = ''
+	inRoom = []
+	def __init__(self, name, user):
+		self.name = name
+		global chatroomIdCounter
+		self.id = chatroomIdCounter
+		chatroomIdCounter += 1
+		self.inRoom.append(user.id)
+		
 
-s.allUsers.append(u1)
 
-print (s.allUsers[0].id)
-print(c1.inRoom[0].id)

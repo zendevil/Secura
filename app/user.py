@@ -31,14 +31,19 @@ class User:
 	def sendReq(self, userId, messageType, msg):
 		global msgSentCounter
 		chatroom = re.search('CHATROOM=(.*)BEGIN MESSAGE=', msg.decode('utf-8'))
-		print(result.group(1))
-		directory = 'server/msgs/'+''+str(userId)+'/toSend/'
+		print(chatroom.group(1))
+		directory = 'server/msgs/'+str(userId)+'/toSend/'
 		if not os.path.exists(directory):
 			print('path'+directory+'doesn\'t exist')
 			os.makedirs(directory)
 		file = open(directory+str(msgSentCounter)+'.txt', 'wb')
 		file.write(msg)
 		print('request sent')
+
+	def sendMsg(self, chatroom, msg):
+		print(type(self.signMsg(msg)))
+		self.sendReq(self.id, 'm', ('CHATROOM='+chatroom.name+'BEGIN MESSAGE='+msg+'MAC='
+			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
 
 
 	def createSignKeyPair(self):
@@ -66,14 +71,13 @@ class User:
 	def createChatRoom(chatroom):
 		self.sendReq(self.id, 'c', chatroom)
 
-	def sendMsg(self, chatroom, msg):
-		self.sendReq(self.id, 'm', ('CHATROOM='+chatroom.name+'BEGIN MESSAGE='+msg+'MAC='+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip()+self.signMsg(msg))
 
 	def receiveMsgs(self, chatroom):
-		for file in os.listdir('server/'+c.name+'toReceive/'):
-			print(file.read().decode('utf-8'))
-			os.remove(file)
-		threading.Timer(5, self.receiveMsgs).start()
+		directory = 'server/msgs/'+chatroom.name+'/toReceive/'
+		for file in os.listdir(directory):
+			print(open(directory+file, 'rb').read().decode('utf-8'))
+			os.remove(directory+file)
+		threading.Timer(5, self.receiveMsgs(chatroom)).start()
 
 	def recEncKey(self, key):
 		receivedKey = key

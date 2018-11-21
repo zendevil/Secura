@@ -2,14 +2,14 @@ from user import *
 import os
 from sys import platform
 print('Secura. Copyright 2018.')
-#loginId = input('Login Id:')
-#password = input('Password:')
+loginId = input('Login Id:')
+password = input('Password:')
 
 def getValidUser(loginId, password):
-	user = User()
+	user = User(loginId, password)
 	return user
 
-user = getValidUser(loginId=1, password=1)
+user = getValidUser(loginId, password)
 
 c1 = user.createChatRoom('secret')
 c2 = user.createChatRoom('sauce')
@@ -29,21 +29,18 @@ chatroom = chatrooms[int(input())]
 user.joinChatRoom(chatroom)
 
 
-# if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
-# 	os.system('clear')
-# elif platform == 'win64' or platform == 'win32':
-# 	os.system('cls')
+if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
+	os.system('clear')
+elif platform == 'win64' or platform == 'win32':
+	os.system('cls')
 
 
 print('Entered chatroom', chatroom.name)
 print(time.ctime())
 while(True):
-	msg = input('>')
+	msg = input()
 	user.sendMsg(msg)
 	user.receiveMsgs()
 
 
 # tests
-
-print(user.id)
-#print(user.otherUsersInChatRoom('hardcoded'))

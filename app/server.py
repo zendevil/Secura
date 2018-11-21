@@ -10,7 +10,7 @@ class Server:
 	def getChatRooms(self, user):
 		userChatrooms = []
 		for c in self.chatRooms:
-			if user.id in c.inRoom:
+			if user.loginId in c.inRoom:
 				userChatrooms.append(c)
 		return userChatrooms
 
@@ -19,10 +19,12 @@ class Server:
 		self.chatRooms.append(chatroom)
 		dir = 'server/chatrooms/' + name + '.txt'
 		if not os.path.exists(dir):
-			os.makedirs(dir)
+			#os.makedirs(dir)
 			file = open(dir, 'w')
-			file.write(str(user.id)+'\n')
-
+			file.write(str(user.loginId)+'\n')
+		else:
+			file = open(dir, 'a')
+			file.write(str(user.loginId)+'\n')
 
 
 chatroomIdCounter = 0
@@ -34,7 +36,7 @@ class ChatRoom:
 		global chatroomIdCounter
 		self.id = chatroomIdCounter
 		chatroomIdCounter += 1
-		self.inRoom.append(user.id)
+		self.inRoom.append(user.loginId)
 
 
 

@@ -12,6 +12,8 @@ s = Server()
 userIdCounter = 0
 msgSentCounter = 0
 class User:
+	loginId = ''
+	password = ''
 	signPublicKey = b''
 	signPrivateKey = b''
 	encPublicKey = b''
@@ -19,13 +21,16 @@ class User:
 	sndSeq = 0
 	rcvSeq = 0
 
-	def __init__(self):
+	def __init__(self, loginId, password):
 		global userIdCounter
 		self.id = userIdCounter 
 		userIdCounter += 1
 		s.addUser(self)
 		self.createSignKeyPair()
 		self.createEncKeyPair()
+		self.loginId = loginId
+		self.password = password
+		self.sendReq('u', 'loginId='+str(loginId)+'password='+password)
 
 
 	def joinChatRoom(self, chatroom):
@@ -39,9 +44,10 @@ class User:
 
 	def sendReq(self, messageType, msg):
 		global msgSentCounter
+
 		if messageType == 'm':
 			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
-			print('others in this chatroom', others)
+			#print('others in this chatroom', others)
 			for o in others:
 				dir = 'server/msgs/'+o+'/'+self.currChatRoom.name+'/toReceive/'
 				if not os.path.exists(dir):
@@ -54,16 +60,20 @@ class User:
 		elif messageType == 'c':
 			print('create message received')
 			s.createChatRoom(self, msg)
-			# dir = 'server/chatrooms/' + msg + '.txt'
-			# if not os.path.exists(dir):
-			# 	os.makedirs(dir)
-			# file = open(dir, 'a')
-			# print('writing', self.id)
-			# file.write('\n'+str(self.id))
+
+		elif messageType == 'u':
+			print('creating user')
+			dir = 'server/userCredentials.txt'
+			if not os.path.exists(dir):
+				file = open(dir, 'w')
+				file.write(msg+'\n')
+			else:
+				file = open(dir, 'a')
+				file.write(msg+'\n')
 
 
 	def sendMsg(self, msg):
-		self.sendReq('m', ('CHATROOM='+self.currChatRoom.name+'BEGIN MESSAGE='+msg+'MAC='
+		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom.name+'BEGIN MESSAGE='+msg+'MAC='
 			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
 
 
@@ -98,10 +108,10 @@ class User:
 
 
 	def receiveMsgs(self):
-		rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive/'
-		print ('receiving')
+		rdir = 'server/msgs/'+str(self.loginId)+'/'+self.currChatRoom.name+'/toReceive/'
 		for file in os.listdir(rdir):
-			print(parseMsg(open(rdir+file, 'rb').read().decode('utf-8')))
+			fileContent = open(rdir+file, 'rb').read().decode('utf-8')
+			print(parseSender(fileContent)+': '+parseMsg(fileContent))
 			os.remove(rdir+file)
 		threading.Timer(5, self.receiveMsgs).start()
 
@@ -148,6 +158,8 @@ def parseMsg(payload):
 	return findStrBetween(payload, 'BEGIN MESSAGE=', 'MAC=')
 def parseChatRoom(payload):
 	return findStrBetween(payload, 'CHATROOM=', 'BEGIN MESSAGE=')
+def parseSender(payload):
+	return findStrBetween(payload, 'SENDER=', 'CHATROOM=')
 
 def findStrBetween(string, substr1, substr2):
 	foundStr = re.search(substr1+'(.*)'+substr2, string)

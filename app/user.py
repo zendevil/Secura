@@ -27,22 +27,43 @@ class User:
 		self.createSignKeyPair()
 		self.createEncKeyPair()
 
-	
-	def sendReq(self, userId, messageType, msg):
-		global msgSentCounter
-		chatroom = re.search('CHATROOM=(.*)BEGIN MESSAGE=', msg.decode('utf-8'))
-		print(chatroom.group(1))
-		directory = 'server/msgs/'+str(userId)+'/toSend/'
-		if not os.path.exists(directory):
-			print('path'+directory+'doesn\'t exist')
-			os.makedirs(directory)
-		file = open(directory+str(msgSentCounter)+'.txt', 'wb')
-		file.write(msg)
-		print('request sent')
 
-	def sendMsg(self, chatroom, msg):
-		print(type(self.signMsg(msg)))
-		self.sendReq(self.id, 'm', ('CHATROOM='+chatroom.name+'BEGIN MESSAGE='+msg+'MAC='
+	def joinChatRoom(self, chatroom):
+		self.currChatRoom = chatroom
+
+		# rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive'
+		# if not os.path.exists(rdir):
+		# 	print('path'+rdir+'doesn\'t exist')
+		# 	os.makedirs(rdir)
+		# file = open('/server/chatrooms/'+self.currChatRoom.name+'.txt', 'r')
+
+	def sendReq(self, messageType, msg):
+		global msgSentCounter
+		if messageType == 'm':
+			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
+			print('others in this chatroom', others)
+			for o in others:
+				dir = 'server/msgs/'+o+'/'+self.currChatRoom.name+'/toReceive/'
+				if not os.path.exists(dir):
+					print('path'+dir+'doesn\'t exist')
+					os.makedirs(dir)
+				file = open(dir+str(msgSentCounter)+'.txt', 'wb')
+				file.write(msg)
+
+
+		elif messageType == 'c':
+			print('create message received')
+			s.createChatRoom(self, msg)
+			# dir = 'server/chatrooms/' + msg + '.txt'
+			# if not os.path.exists(dir):
+			# 	os.makedirs(dir)
+			# file = open(dir, 'a')
+			# print('writing', self.id)
+			# file.write('\n'+str(self.id))
+
+
+	def sendMsg(self, msg):
+		self.sendReq('m', ('CHATROOM='+self.currChatRoom.name+'BEGIN MESSAGE='+msg+'MAC='
 			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
 
 
@@ -68,25 +89,30 @@ class User:
 		file_out = open('keys/enc_public'+str(self.id)+'.pem', 'wb')
 		file_out.write(self.encPublicKey)
 	
-	def createChatRoom(chatroom):
-		self.sendReq(self.id, 'c', chatroom)
+	def createChatRoom(self, chatroomName):
+		chatroom = ChatRoom(chatroomName, self)
+		print('sending request in createChatRoom')
+		self.sendReq('c', chatroomName)
+		self.currChatRoom = chatroom
 
 
-	def receiveMsgs(self, chatroom):
-		directory = 'server/msgs/'+chatroom.name+'/toReceive/'
-		for file in os.listdir(directory):
-			print(open(directory+file, 'rb').read().decode('utf-8'))
-			os.remove(directory+file)
-		threading.Timer(5, self.receiveMsgs(chatroom)).start()
+
+	def receiveMsgs(self):
+		rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive/'
+		print ('receiving')
+		for file in os.listdir(rdir):
+			print(parseMsg(open(rdir+file, 'rb').read().decode('utf-8')))
+			os.remove(rdir+file)
+		threading.Timer(5, self.receiveMsgs).start()
 
 	def recEncKey(self, key):
 		receivedKey = key
 
-	def signMsg(self, message):
-		signPrivateKey = RSA.import_key(open('keys/sign_private'+str(self.id)+'.pem').read())
-		h = SHA256.new((message).encode('utf-8').strip())
-		signature = pkcs1_15.new(signPrivateKey).sign(h)
-		return signature
+	# def signMsg(self, message):
+	# 	signPrivateKey = RSA.import_key(open('keys/sign_private'+str(self.id)+'.pem').read())
+	# 	h = SHA256.new((message).encode('utf-8').strip())
+	# 	signature = pkcs1_15.new(signPrivateKey).sign(h)
+	# 	return signature
 
 	def authenticateSign(self, message, signature):
 		signPublicKey = RSA.import_key(open('keys/sign_public'+str(self.id)+'.pem').read())
@@ -109,3 +135,21 @@ class User:
 		h = HMAC.new(secret, digestmod=SHA256)
 		h.update(msg.encode('utf-8').strip())
 		return h.hexdigest()
+
+	def otherUsersInChatRoom(self, chatroomName):
+		usersInChatRoom = []
+		file = open('server/chatrooms/'+chatroomName+'.txt', 'r')
+		for line in file:
+			if not line == str(self.id) +'\n':
+					usersInChatRoom.append(line[:-1])
+		return usersInChatRoom
+
+def parseMsg(payload):
+	return findStrBetween(payload, 'BEGIN MESSAGE=', 'MAC=')
+def parseChatRoom(payload):
+	return findStrBetween(payload, 'CHATROOM=', 'BEGIN MESSAGE=')
+
+def findStrBetween(string, substr1, substr2):
+	foundStr = re.search(substr1+'(.*)'+substr2, string)
+	return(foundStr.group(1))
+

@@ -1,4 +1,5 @@
-from user import *
+#from user import *
+import os
 class Server: 
 	allUsers = []
 	chatRooms = []
@@ -16,6 +17,11 @@ class Server:
 	def createChatRoom(self, user, name):
 		chatroom = ChatRoom(name, user)
 		self.chatRooms.append(chatroom)
+		dir = 'server/chatrooms/' + name + '.txt'
+		if not os.path.exists(dir):
+			os.makedirs(dir)
+			file = open(dir, 'w')
+			file.write(str(user.id)+'\n')
 
 
 
@@ -29,6 +35,7 @@ class ChatRoom:
 		self.id = chatroomIdCounter
 		chatroomIdCounter += 1
 		self.inRoom.append(user.id)
-		
+
+
 
 

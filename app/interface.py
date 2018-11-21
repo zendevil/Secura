@@ -1,5 +1,6 @@
 from user import *
-
+import os
+from sys import platform
 print('Secura. Copyright 2018.')
 #loginId = input('Login Id:')
 #password = input('Password:')
@@ -10,9 +11,9 @@ def getValidUser(loginId, password):
 
 user = getValidUser(loginId=1, password=1)
 
-c1 = s.createChatRoom(user, 'secret')
-c2 = s.createChatRoom(user, 'sauce')
-c3 = s.createChatRoom(user, 'space')
+c1 = user.createChatRoom('secret')
+c2 = user.createChatRoom('sauce')
+c3 = user.createChatRoom('space')
 
 if not user:
 	exit()
@@ -25,24 +26,24 @@ for c in chatrooms:
 	count += 1
 print('Pick a chatroom number:')
 chatroom = chatrooms[int(input())]
+user.joinChatRoom(chatroom)
+
+
+# if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
+# 	os.system('clear')
+# elif platform == 'win64' or platform == 'win32':
+# 	os.system('cls')
+
+
 print('Entered chatroom', chatroom.name)
-
-
-
 print(time.ctime())
 while(True):
 	msg = input('>')
-	user.sendMsg(chatroom, msg)
-	user.receiveMsgs(chatroom)
-
+	user.sendMsg(msg)
+	user.receiveMsgs()
 
 
 # tests
 
-encrypted = user.encryptMsg(b'298134712389')
-signature = user.signMsg(encrypted)
-
-
-
-print('mac', user.computeMac(encrypted))
-
+print(user.id)
+#print(user.otherUsersInChatRoom('hardcoded'))

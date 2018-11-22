@@ -2,7 +2,7 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256, HMAC
 from Crypto.Util import Padding
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
 from server import Server, ChatRoom
 import os, time, threading, re
@@ -32,8 +32,6 @@ class User:
 		self.password = password
 		self.sendReq('u', 'loginId='+str(loginId)+'password='+password)
 
-
-
 	def sendReq(self, messageType, msg):
 		global msgSentCounter
 
@@ -55,23 +53,28 @@ class User:
 
 		elif messageType == 'u':
 			print('creating user')
-			dir = 'server/userCredentials.txt'
-			if not os.path.exists(dir):
-				file = open(dir, 'w')
-				file.write(msg+'\n')
-			else:
-				file = open(dir, 'a')
-				file.write(msg+'\n')
+			dir = 'server/userCredentials/'
+			pubKey = RSA.import_key(open('keys/user/pass_public.pem').read())
+			sessionKey = get_random_bytes(16)
+			cipherRsa = PKCS1_OAEP.new(pubKey)
+			encSessionKey = cipherRsa.encrypt(sessionKey)
 
+			cipherAes = AES.new(sessionKey, AES.MODE_EAX)
+			ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
+
+			if not os.path.exists(dir):
+				os.makedirs(dir)
+			file = open(dir+numUsers()+'.bin', 'wb')
+			[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
+			file = open('server/numUsers.txt', 'r+')
+			count = file.read()
+			file.seek(0)
+			file.write(str(int(count) + 1))
+			file.truncate()
+			
 	def joinChatRoom(self, chatroom):
 		self.currChatRoom = chatroom
 		self.sendReq('c', chatroom)
-
-		# rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive'
-		# if not os.path.exists(rdir):
-		# 	print('path'+rdir+'doesn\'t exist')
-		# 	os.makedirs(rdir)
-		# file = open('/server/chatrooms/'+self.currChatRoom.name+'.txt', 'r')
 
 	def sendMsg(self, msg):
 		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='
@@ -165,4 +168,8 @@ def parseSender(payload):
 def findStrBetween(string, substr1, substr2):
 	foundStr = re.search(substr1+'(.*)'+substr2, string)
 	return(foundStr.group(1))
+
+def numUsers():
+	return open('server/numUsers.txt', 'r').read()[:-1]
+
 

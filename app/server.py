@@ -9,6 +9,7 @@ class Server:
 
 	def getChatRooms(self, user):
 		userChatrooms = []
+		
 		dir = 'server/chatrooms/'
 		for filename in os.listdir(dir):
 			if filename.endswith('.txt'):

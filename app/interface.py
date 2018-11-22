@@ -11,10 +11,6 @@ def getValidUser(loginId, password):
 
 user = getValidUser(loginId, password)
 
-c1 = user.createChatRoom('secret')
-c2 = user.createChatRoom('sauce')
-c3 = user.createChatRoom('space')
-
 if not user:
 	exit()
 
@@ -22,10 +18,15 @@ print('Chatrooms.')
 count = 0 
 chatrooms = s.getChatRooms(user)
 for c in chatrooms:
-	print(count, c.name)
+	print(count, c)
 	count += 1
 print('Pick a chatroom number:')
-chatroom = chatrooms[int(input())]
+i = input()
+if not i == 'j':
+	chatroom = chatrooms[int(i)]
+	
+else:
+	chatroom = input('Name of the chatroom you would like to join:')
 user.joinChatRoom(chatroom)
 
 
@@ -35,10 +36,14 @@ elif platform == 'win64' or platform == 'win32':
 	os.system('cls')
 
 
-print('Entered chatroom', chatroom.name)
+print('Entered chatroom', chatroom)
 print(time.ctime())
 while(True):
 	msg = input()
+	CURSOR_UP_ONE = '\x1b[1A'
+	ERASE_LINE = '\x1b[2K'
+	print(CURSOR_UP_ONE + ERASE_LINE + CURSOR_UP_ONE)
+	print(end='\r')
 	user.sendMsg(msg)
 	user.receiveMsgs()
 

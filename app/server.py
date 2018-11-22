@@ -9,9 +9,12 @@ class Server:
 
 	def getChatRooms(self, user):
 		userChatrooms = []
-		for c in self.chatRooms:
-			if user.loginId in c.inRoom:
-				userChatrooms.append(c)
+		dir = 'server/chatrooms/'
+		for filename in os.listdir(dir):
+			if filename.endswith('.txt'):
+				file = open(dir+filename, 'r')
+				if user.loginId in file.read():
+					userChatrooms.append(filename[:-4])
 		return userChatrooms
 
 	def createChatRoom(self, user, name):

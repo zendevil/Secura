@@ -33,14 +33,6 @@ class User:
 		self.sendReq('u', 'loginId='+str(loginId)+'password='+password)
 
 
-	def joinChatRoom(self, chatroom):
-		self.currChatRoom = chatroom
-
-		# rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive'
-		# if not os.path.exists(rdir):
-		# 	print('path'+rdir+'doesn\'t exist')
-		# 	os.makedirs(rdir)
-		# file = open('/server/chatrooms/'+self.currChatRoom.name+'.txt', 'r')
 
 	def sendReq(self, messageType, msg):
 		global msgSentCounter
@@ -49,7 +41,7 @@ class User:
 			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
 			#print('others in this chatroom', others)
 			for o in others:
-				dir = 'server/msgs/'+o+'/'+self.currChatRoom.name+'/toReceive/'
+				dir = 'server/msgs/'+o+'/'+self.currChatRoom+'/toReceive/'
 				if not os.path.exists(dir):
 					print('path'+dir+'doesn\'t exist')
 					os.makedirs(dir)
@@ -71,9 +63,18 @@ class User:
 				file = open(dir, 'a')
 				file.write(msg+'\n')
 
+	def joinChatRoom(self, chatroom):
+		self.currChatRoom = chatroom
+		self.sendReq('c', chatroom)
+
+		# rdir = 'server/msgs/'+str(self.id)+'/'+self.currChatRoom.name+'/toReceive'
+		# if not os.path.exists(rdir):
+		# 	print('path'+rdir+'doesn\'t exist')
+		# 	os.makedirs(rdir)
+		# file = open('/server/chatrooms/'+self.currChatRoom.name+'.txt', 'r')
 
 	def sendMsg(self, msg):
-		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom.name+'BEGIN MESSAGE='+msg+'MAC='
+		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='
 			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
 
 
@@ -108,7 +109,7 @@ class User:
 
 
 	def receiveMsgs(self):
-		rdir = 'server/msgs/'+str(self.loginId)+'/'+self.currChatRoom.name+'/toReceive/'
+		rdir = 'server/msgs/'+str(self.loginId)+'/'+self.currChatRoom+'/toReceive/'
 		for file in os.listdir(rdir):
 			fileContent = open(rdir+file, 'rb').read().decode('utf-8')
 			print(parseSender(fileContent)+': '+parseMsg(fileContent))

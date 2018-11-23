@@ -1,4 +1,5 @@
 #from user import *
+from Crypto.Hash import SHA256
 import os
 class Server: 
 	allUsers = []
@@ -9,7 +10,7 @@ class Server:
 
 	def getChatRooms(self, user):
 		userChatrooms = []
-		
+
 		dir = 'server/chatrooms/'
 		for filename in os.listdir(dir):
 			if filename.endswith('.txt'):
@@ -29,6 +30,8 @@ class Server:
 		else:
 			file = open(dir, 'a')
 			file.write(str(user.loginId)+'\n')
+
+
 
 
 chatroomIdCounter = 0

@@ -30,10 +30,10 @@ else:
 user.joinChatRoom(chatroom)
 
 
-if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
-	os.system('clear')
-elif platform == 'win64' or platform == 'win32':
-	os.system('cls')
+# if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
+# 	os.system('clear')
+# elif platform == 'win64' or platform == 'win32':
+# 	os.system('cls')
 
 
 print('Entered chatroom', chatroom)

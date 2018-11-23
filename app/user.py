@@ -39,6 +39,8 @@ class User:
 			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
 			#print('others in this chatroom', others)
 			for o in others:
+				#print('printing username', remInvChars(createHash(o).decode('iso-8859-1')))
+				#dir = 'server/msgs/'+remInvChars(createHash(o).decode('iso-8859-1'))+'/'+self.currChatRoom+'/toReceive/'
 				dir = 'server/msgs/'+o+'/'+self.currChatRoom+'/toReceive/'
 				if not os.path.exists(dir):
 					print('path'+dir+'doesn\'t exist')
@@ -64,21 +66,44 @@ class User:
 
 			if not os.path.exists(dir):
 				os.makedirs(dir)
+			print('dir', dir)
 			file = open(dir+numUsers()+'.bin', 'wb')
+			print('creating the file')
+
+
+
+
 			[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
 			file = open('server/numUsers.txt', 'r+')
 			count = file.read()
 			file.seek(0)
 			file.write(str(int(count) + 1))
 			file.truncate()
+
+			
+
+
 			
 	def joinChatRoom(self, chatroom):
 		self.currChatRoom = chatroom
 		self.sendReq('c', chatroom)
+		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'w+')
+		file.write('0')
 
 	def sendMsg(self, msg):
 		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='
 			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
+		self.incSndSeq()
+
+	def incSndSeq(self):
+		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'r+')
+		sndSeq = file.read()
+		file.seek(0)
+		file.write(str(int(sndSeq) + 1))
+		file.truncate()
+
+		
+
 
 
 	def createSignKeyPair(self):
@@ -171,5 +196,12 @@ def findStrBetween(string, substr1, substr2):
 
 def numUsers():
 	return open('server/numUsers.txt', 'r').read()[:-1]
+
+def createHash(data):
+	hashObj = SHA256.new(data.encode('utf-8'))
+	return hashObj.digest()
+
+def remInvChars(msg):
+	return msg.replace('/','').replace('\\','').replace('?','').replace('%','').replace('*', '').replace(':', '').replace('|', '').replace('\"', '').replace('<', '').replace('>', '').replace('.', '').replace(' ', '')
 
 

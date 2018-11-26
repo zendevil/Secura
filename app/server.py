@@ -31,7 +31,8 @@ class Server:
 			file = open(dir, 'a')
 			file.write(str(user.loginId)+'\n')
 
-
+	def decryptMsg(self, msg):
+		return msg
 
 
 chatroomIdCounter = 0

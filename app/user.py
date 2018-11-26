@@ -34,14 +34,14 @@ class User:
 
 	def sendReq(self, messageType, msg):
 		global msgSentCounter
-
+		msg = s.decryptMsg(msg)
 		if messageType == 'm':
 			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
 			#print('others in this chatroom', others)
 			for o in others:
 				#print('printing username', remInvChars(createHash(o).decode('iso-8859-1')))
-				#dir = 'server/msgs/'+remInvChars(createHash(o).decode('iso-8859-1'))+'/'+self.currChatRoom+'/toReceive/'
-				dir = 'server/msgs/'+o+'/'+self.currChatRoom+'/toReceive/'
+				dir = 'server/msgs/'+createHash(o)+'/'+createHash(self.currChatRoom)+'/toReceive/'
+				#dir = 'server/msgs/'+o+'/'+self.currChatRoom+'/toReceive/'
 				if not os.path.exists(dir):
 					print('path'+dir+'doesn\'t exist')
 					os.makedirs(dir)
@@ -71,8 +71,6 @@ class User:
 			print('creating the file')
 
 
-
-
 			[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
 			file = open('server/numUsers.txt', 'r+')
 			count = file.read()
@@ -81,30 +79,27 @@ class User:
 			file.truncate()
 
 			
-
-
-			
 	def joinChatRoom(self, chatroom):
 		self.currChatRoom = chatroom
 		self.sendReq('c', chatroom)
-		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'w+')
+		dir = 'server/msgs/' + createHash(self.loginId)+'/'+createHash(self.currChatRoom)
+		os.makedirs(dir)
+		file = open(dir + '/sndSeq.txt', 'w+')
 		file.write('0')
 
 	def sendMsg(self, msg):
-		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='
-			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
+		self.sendReq('m', (self.encryptMsg('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN='+msg+'MAC='
+			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8')))#+self.signMsg(msg))
 		self.incSndSeq()
 
 	def incSndSeq(self):
-		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'r+')
+		file = open('server/msgs/' + createHash(self.loginId)+'/'+createHash(self.currChatRoom)+ '/sndSeq.txt', 'r+')
 		sndSeq = file.read()
 		file.seek(0)
 		file.write(str(int(sndSeq) + 1))
 		file.truncate()
 
-		
-
-
+	
 
 	def createSignKeyPair(self):
 		key = RSA.generate(2048)
@@ -137,7 +132,9 @@ class User:
 
 
 	def receiveMsgs(self):
-		rdir = 'server/msgs/'+str(self.loginId)+'/'+self.currChatRoom+'/toReceive/'
+		rdir = 'server/msgs/'+createHash(self.loginId)+'/'+createHash(self.currChatRoom)+'/toReceive/'
+		if not os.path.exists(rdir):
+			os.makedirs(rdir)
 		for file in os.listdir(rdir):
 			fileContent = open(rdir+file, 'rb').read().decode('utf-8')
 			print(parseSender(fileContent)+': '+parseMsg(fileContent))
@@ -183,6 +180,7 @@ class User:
 					usersInChatRoom.append(line[:-1])
 		return usersInChatRoom
 
+
 def parseMsg(payload):
 	return findStrBetween(payload, 'BEGIN MESSAGE=', 'MAC=')
 def parseChatRoom(payload):
@@ -199,9 +197,4 @@ def numUsers():
 
 def createHash(data):
 	hashObj = SHA256.new(data.encode('utf-8'))
-	return hashObj.digest()
-
-def remInvChars(msg):
-	return msg.replace('/','').replace('\\','').replace('?','').replace('%','').replace('*', '').replace(':', '').replace('|', '').replace('\"', '').replace('<', '').replace('>', '').replace('.', '').replace(' ', '')
-
-
+	return hashObj.hexdigest()

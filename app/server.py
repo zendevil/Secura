@@ -1,6 +1,11 @@
 #from user import *
 from Crypto.Hash import SHA256
 import os
+
+def createHash(data):
+	hashObj = SHA256.new(data.encode('utf-8'))
+	return hashObj.hexdigest()
+
 class Server: 
 	allUsers = []
 	chatRooms = []
@@ -31,8 +36,23 @@ class Server:
 			file = open(dir, 'a')
 			file.write(str(user.loginId)+'\n')
 
+	def userExists(self, username):
+		usernameHash = createHash(username)
+		dir = 'server/msgs/'
+		for filename in os.listdir(dir):
+			if filename == usernameHash:
+				return True
+		return False
 
-
+	def userPassCorrect(self, loginId, password):
+		dir = 'server/userCredentials/'
+		hashedCredentials = createHash('loginId='+str(loginId)+'password='+password)
+		for filename in os.listdir(dir):
+			file = open(dir+filename, 'r')
+			print(dir+filename)
+			if file.read() == hashedCredentials:
+				return True
+		return False
 
 chatroomIdCounter = 0
 class ChatRoom:

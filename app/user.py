@@ -4,13 +4,14 @@ from Crypto.Util import Padding
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
-from server import Server, ChatRoom
+from server import *
 import os, time, threading, re
 
 s = Server()
 
 userIdCounter = 0
 msgSentCounter = 0
+
 class User:
 	loginId = ''
 	password = ''
@@ -36,18 +37,26 @@ class User:
 		global msgSentCounter
 
 		if messageType == 'm':
-			others = self.otherUsersInChatRoom(parseChatRoom(msg.decode('utf-8')))
-			#print('others in this chatroom', others)
+			others = self.otherUsersInChatRoom(parseChatRoom(msg))
+			
+			pubKey = RSA.import_key(open('keys/user/enc_public.pem').read())
+			sessionKey = get_random_bytes(16)
+			
+			# encrypt session key 
+			cipherRsa = PKCS1_OAEP.new(pubKey)
+			encSessionKey = cipherRsa.encrypt(sessionKey)
+			
+			# encrypt data
+			cipherAes = AES.new(sessionKey, AES.MODE_EAX)
+			ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
+			
 			for o in others:
-				#print('printing username', remInvChars(createHash(o).decode('iso-8859-1')))
-				#dir = 'server/msgs/'+remInvChars(createHash(o).decode('iso-8859-1'))+'/'+self.currChatRoom+'/toReceive/'
-				dir = 'server/msgs/'+o+'/'+self.currChatRoom+'/toReceive/'
+				dir = 'server/msgs/'+createHash(o)+'/'+createHash(self.currChatRoom)+'/toReceive/'
 				if not os.path.exists(dir):
 					print('path'+dir+'doesn\'t exist')
 					os.makedirs(dir)
-				file = open(dir+str(msgSentCounter)+'.txt', 'wb')
-				file.write(msg)
-
+				file = open(dir+str(msgSentCounter)+'.bin', 'wb')
+				[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
 
 		elif messageType == 'c':
 			print('create message received')
@@ -56,55 +65,49 @@ class User:
 		elif messageType == 'u':
 			print('creating user')
 			dir = 'server/userCredentials/'
-			pubKey = RSA.import_key(open('keys/user/pass_public.pem').read())
-			sessionKey = get_random_bytes(16)
-			cipherRsa = PKCS1_OAEP.new(pubKey)
-			encSessionKey = cipherRsa.encrypt(sessionKey)
+			# pubKey = RSA.import_key(open('keys/user/pass_public.pem').read())
+			# sessionKey = get_random_bytes(16)
+			# cipherRsa = PKCS1_OAEP.new(pubKey)
+			# encSessionKey = cipherRsa.encrypt(sessionKey)
 
-			cipherAes = AES.new(sessionKey, AES.MODE_EAX)
-			ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
+			# cipherAes = AES.new(sessionKey, AES.MODE_EAX)
+			# ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
 
+			hashedCredentials = createHash(msg)
 			if not os.path.exists(dir):
 				os.makedirs(dir)
-			print('dir', dir)
-			file = open(dir+numUsers()+'.bin', 'wb')
-			print('creating the file')
-
-
-
-
-			[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
+			file = open(dir+numUsers()+'.txt', 'w')
+			file.write(hashedCredentials)
 			file = open('server/numUsers.txt', 'r+')
 			count = file.read()
 			file.seek(0)
 			file.write(str(int(count) + 1))
 			file.truncate()
 
-			
+	def decryptUserCredentials(file):
+		priKey = RSA.import_key(open('keys/user/pass_private.pem').read())
+		return decrypt(file, priKey)
+
+	def decryptMsg(self, filename):
+		priKey = RSA.import_key(open('keys/user/enc_private.pem').read())
+		return decrypt(filename, priKey)
 
 
-			
 	def joinChatRoom(self, chatroom):
 		self.currChatRoom = chatroom
 		self.sendReq('c', chatroom)
-		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'w+')
+		
+		dir = 'server/msgs/' + createHash(self.loginId)+'/'+createHash(self.currChatRoom)
+		if not os.path.exists(dir):
+			os.makedirs(dir)
+		file = open(dir + '/sndSeq.txt', 'w+')
 		file.write('0')
 
 	def sendMsg(self, msg):
-		self.sendReq('m', ('SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='
-			+self.computeMac(msg)+'SIGNATURE=').encode('utf-8').strip())#+self.signMsg(msg))
-		self.incSndSeq()
-
-	def incSndSeq(self):
-		file = open('server/msgs/' + self.loginId+'/'+self.currChatRoom+ '/sndSeq.txt', 'r+')
-		sndSeq = file.read()
-		file.seek(0)
-		file.write(str(int(sndSeq) + 1))
-		file.truncate()
-
-		
-
-
+		msg = 'SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='+\
+		self.computeMac(msg)+'SIGNATURE='#+self.signMsg(msg))
+		print(msg)
+		self.sendReq('m', msg)
 
 	def createSignKeyPair(self):
 		key = RSA.generate(2048)
@@ -134,12 +137,12 @@ class User:
 		self.sendReq('c', chatroomName)
 		self.currChatRoom = chatroom
 
-
-
 	def receiveMsgs(self):
-		rdir = 'server/msgs/'+str(self.loginId)+'/'+self.currChatRoom+'/toReceive/'
+		rdir = 'server/msgs/'+createHash(self.loginId)+'/'+createHash(self.currChatRoom)+'/toReceive/'
 		for file in os.listdir(rdir):
-			fileContent = open(rdir+file, 'rb').read().decode('utf-8')
+			#if not file == 'sendSeq.txt':
+			fileContent = self.decryptMsg(rdir+file)
+			#fileContent = open(rdir+file, 'rb').read().decode('utf-8')
 			print(parseSender(fileContent)+': '+parseMsg(fileContent))
 			os.remove(rdir+file)
 		threading.Timer(5, self.receiveMsgs).start()
@@ -162,13 +165,6 @@ class User:
 		except(ValueError, TypeError):
 			print('Invalid Signature')
 
-	def encryptMsg(self, msg):
-		msg = Padding.pad(msg, AES.block_size, style='iso7816')
-		iv = get_random_bytes(AES.block_size)
-		ENC = AES.new(self.encPrivateKey, AES.MODE_CBC, iv)
-		encrypted = ENC.encrypt(msg)
-		return encrypted
-
 	def computeMac(self, msg):
 		secret = b'secret'
 		h = HMAC.new(secret, digestmod=SHA256)
@@ -183,6 +179,28 @@ class User:
 					usersInChatRoom.append(line[:-1])
 		return usersInChatRoom
 
+def decrypt(filename, key):
+	file = open(filename, 'rb')
+	encSessionKey, nonce, tag, ciphertext = \
+	[file.read(x) for x in (key.size_in_bytes(), 16, 16, -1)]
+	# decrypt session key
+	cipherRsa = PKCS1_OAEP.new(key)
+	sessionKey = cipherRsa.decrypt(encSessionKey)
+	# decrypt data 
+	cipherAes = AES.new(sessionKey, AES.MODE_EAX, nonce)
+	data = cipherAes.decrypt_and_verify(ciphertext, tag)
+	return data.decode('utf-8')
+
+# def encryptMsg(self, msg):
+# 	print('encoded', msg.encode('utf-8'))
+# 	msg = Padding.pad(msg.encode('utf-8'), AES.block_size, style='iso7816')
+# 	print('after padding', msg)
+# 	iv = get_random_bytes(AES.block_size)
+# 	ENC = AES.new(self.encPrivateKey, AES.MODE_CBC, iv)
+# 	encrypted = ENC.encrypt(msg)
+# 	print(type(encrypted))
+# 	return encrypted
+
 def parseMsg(payload):
 	return findStrBetween(payload, 'BEGIN MESSAGE=', 'MAC=')
 def parseChatRoom(payload):
@@ -195,13 +213,7 @@ def findStrBetween(string, substr1, substr2):
 	return(foundStr.group(1))
 
 def numUsers():
-	return open('server/numUsers.txt', 'r').read()[:-1]
+	return open('server/numUsers.txt', 'r').read()
 
-def createHash(data):
-	hashObj = SHA256.new(data.encode('utf-8'))
-	return hashObj.digest()
-
-def remInvChars(msg):
-	return msg.replace('/','').replace('\\','').replace('?','').replace('%','').replace('*', '').replace(':', '').replace('|', '').replace('\"', '').replace('<', '').replace('>', '').replace('.', '').replace(' ', '')
 
 

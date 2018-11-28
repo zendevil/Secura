@@ -1,13 +1,46 @@
 from user import *
 import os
 from sys import platform
-print('Secura. Copyright 2018.')
-loginId = input('Login Id:')
-password = input('Password:')
+
+def enterNewCredentials():
+	newLoginId = input('Type new Login Id:')
+	newPassword = input('Type new Password:')
+	return [newLoginId, newPassword]
 
 def getValidUser(loginId, password):
-	user = User(loginId, password)
-	return user
+	if s.userPassCorrect(loginId, password):
+		return User(loginId, password)
+	else:
+		print('Invalid username or password')
+
+print('Secura. Copyright 2018.')
+
+i = input('l to login and c to create new user:')
+
+loginId = ''
+password = ''
+newCredentials = ''
+newLoginId = ''
+newLoginPassword = ''
+user = 0
+
+if i == 'l':
+	loginId = input('Login Id:')
+	password = input('Password:')
+
+elif i == 'c':
+	newCredentials = enterNewCredentials()
+	newLoginId = newCredentials[0]
+	newPassword = newCredentials[1]
+
+	while s.userExists(newLoginId):
+		print('User Exists. Try Again.')
+		newCredentials = enterNewCredentials()
+		newLoginId = newCredentials[0]
+		newLoginPassword = newCredentials[1]
+	
+	loginId = newLoginId
+	password = newPassword
 
 user = getValidUser(loginId, password)
 

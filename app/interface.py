@@ -1,6 +1,7 @@
 from user import *
 import os
 from sys import platform
+import getpass
 
 def enterNewCredentials():
 	newLoginId = input('Type new Login Id:')
@@ -26,7 +27,13 @@ user = 0
 
 if i == 'l':
 	loginId = input('Login Id:')
+	#password = getpass.getpass()
 	password = input('Password:')
+	if getValidUser(loginId, password):
+		print('Welcome', loginId)
+		user = User(loginId, password)
+	else:
+		print('Username or password incorrect')
 
 elif i == 'c':
 	newCredentials = enterNewCredentials()
@@ -38,11 +45,8 @@ elif i == 'c':
 		newCredentials = enterNewCredentials()
 		newLoginId = newCredentials[0]
 		newLoginPassword = newCredentials[1]
+	user = User(newLoginId, newLoginPassword)
 	
-	loginId = newLoginId
-	password = newPassword
-
-user = getValidUser(loginId, password)
 
 if not user:
 	exit()
@@ -80,5 +84,3 @@ while(True):
 	user.sendMsg(msg)
 	user.receiveMsgs()
 
-
-# tests

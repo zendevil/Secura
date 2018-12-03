@@ -37,8 +37,15 @@ class User:
 		global msgSentCounter
 
 		if messageType == 'm':
-			others = self.otherUsersInChatRoom(parseChatRoom(msg))
+
+			chatroom = parseChatRoom(msg)
 			
+			hashedloginId = createHash(self.loginId)
+			hashedChatroom = createHash(chatroom)
+			sndSeqDir = 'server/msgs/'+hashedloginId+'/'+hashedChatroom+'/sndSeq.txt'
+			file = open(sndSeqDir, 'r')
+			msg = 'SEND SEQ='+file.read()+msg	
+			print(msg)
 			pubKey = RSA.import_key(open('keys/user/enc_public.pem').read())
 			sessionKey = get_random_bytes(16)
 			
@@ -50,39 +57,30 @@ class User:
 			cipherAes = AES.new(sessionKey, AES.MODE_EAX)
 			ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
 			
+			others = self.usersInChatRoom(chatroom)
 			for o in others:
-				dir = 'server/msgs/'+createHash(o)+'/'+createHash(self.currChatRoom)+'/toReceive/'
+				dir = 'server/msgs/'+o+'/'+createHash(chatroom)+'/toReceive/'
 				if not os.path.exists(dir):
 					print('path'+dir+'doesn\'t exist')
 					os.makedirs(dir)
 				file = open(dir+str(msgSentCounter)+'.bin', 'wb')
 				[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
+			s.incSndSeq(createHash(chatroom), hashedloginId)
 
 		elif messageType == 'c':
 			print('create message received')
-			s.createChatRoom(self, msg)
+			s.createChatRoom(msg, createHash(self.loginId))
 
 		elif messageType == 'u':
 			print('creating user')
 			dir = 'server/userCredentials/'
-			# pubKey = RSA.import_key(open('keys/user/pass_public.pem').read())
-			# sessionKey = get_random_bytes(16)
-			# cipherRsa = PKCS1_OAEP.new(pubKey)
-			# encSessionKey = cipherRsa.encrypt(sessionKey)
-
-			# cipherAes = AES.new(sessionKey, AES.MODE_EAX)
-			# ciphertext, tag = cipherAes.encrypt_and_digest(msg.encode('utf-8'))
 
 			hashedCredentials = createHash(msg)
 			if not os.path.exists(dir):
 				os.makedirs(dir)
 			file = open(dir+numUsers()+'.txt', 'w')
 			file.write(hashedCredentials)
-			file = open('server/numUsers.txt', 'r+')
-			count = file.read()
-			file.seek(0)
-			file.write(str(int(count) + 1))
-			file.truncate()
+			incFileValBy('server/numUsers.txt', 1)
 
 	def decryptUserCredentials(file):
 		priKey = RSA.import_key(open('keys/user/pass_private.pem').read())
@@ -106,7 +104,7 @@ class User:
 	def sendMsg(self, msg):
 		msg = 'SENDER='+self.loginId+'CHATROOM='+self.currChatRoom+'BEGIN MESSAGE='+msg+'MAC='+\
 		self.computeMac(msg)+'SIGNATURE='#+self.signMsg(msg))
-		print(msg)
+		
 		self.sendReq('m', msg)
 
 	def createSignKeyPair(self):
@@ -138,13 +136,26 @@ class User:
 		self.currChatRoom = chatroom
 
 	def receiveMsgs(self):
-		rdir = 'server/msgs/'+createHash(self.loginId)+'/'+createHash(self.currChatRoom)+'/toReceive/'
+		loginIdHash = createHash(self.loginId)
+		currChatRoomHash = createHash(self.currChatRoom)
+		rdir = 'server/msgs/'+loginIdHash+'/'+currChatRoomHash+'/toReceive/'
+		count = 0
 		for file in os.listdir(rdir):
+			count += 1
 			#if not file == 'sendSeq.txt':
 			fileContent = self.decryptMsg(rdir+file)
 			#fileContent = open(rdir+file, 'rb').read().decode('utf-8')
 			print(parseSender(fileContent)+': '+parseMsg(fileContent))
 			os.remove(rdir+file)
+		if count > 0:
+			filepath = 'server/msgs/'+loginIdHash+'/'+currChatRoomHash+'/recSqn.txt'
+			if os.path.isfile(filepath):
+				incFileValBy(filepath, count)
+			else:
+				file = open(filepath, 'w+')
+				file.write('0')
+
+
 		threading.Timer(5, self.receiveMsgs).start()
 
 	def recEncKey(self, key):
@@ -171,12 +182,12 @@ class User:
 		h.update(msg.encode('utf-8').strip())
 		return h.hexdigest()
 
-	def otherUsersInChatRoom(self, chatroomName):
+	def usersInChatRoom(self, chatroomName):
 		usersInChatRoom = []
 		file = open('server/chatrooms/'+chatroomName+'.txt', 'r')
 		for line in file:
-			if not line == str(self.id) +'\n':
-					usersInChatRoom.append(line[:-1])
+			#if not line == str(self.id) +'\n':
+			usersInChatRoom.append(line[:-1])
 		return usersInChatRoom
 
 def decrypt(filename, key):
@@ -215,5 +226,11 @@ def findStrBetween(string, substr1, substr2):
 def numUsers():
 	return open('server/numUsers.txt', 'r').read()
 
+def incFileValBy(filepath, num):
+		file = open(filepath, 'r+')
+		sqn = file.read()
+		file.seek(0)
+		file.write(str(int(sqn) + num))
+		file.truncate()
 
 

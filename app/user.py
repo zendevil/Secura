@@ -31,7 +31,8 @@ class User:
 		self.createEncKeyPair()
 		self.loginId = loginId
 		self.password = password
-		self.sendReq('u', 'loginId='+str(loginId)+'password='+password)
+		print('password', password)
+		self.sendReq('u', 'loginId='+loginId+'password='+password)
 
 	def sendReq(self, messageType, msg):
 		global msgSentCounter
@@ -45,7 +46,6 @@ class User:
 			sndSeqDir = 'server/msgs/'+hashedloginId+'/'+hashedChatroom+'/sndSeq.txt'
 			file = open(sndSeqDir, 'r')
 			msg = 'SEND SEQ='+file.read()+msg	
-			print(msg)
 			pubKey = RSA.import_key(open('keys/user/enc_public.pem').read())
 			sessionKey = get_random_bytes(16)
 			
@@ -61,7 +61,7 @@ class User:
 			for o in others:
 				dir = 'server/msgs/'+o+'/'+createHash(chatroom)+'/toReceive/'
 				if not os.path.exists(dir):
-					print('path'+dir+'doesn\'t exist')
+					#print('path'+dir+'doesn\'t exist')
 					os.makedirs(dir)
 				file = open(dir+str(msgSentCounter)+'.bin', 'wb')
 				[file.write(x) for x in (encSessionKey, cipherAes.nonce, tag, ciphertext)]
@@ -72,15 +72,14 @@ class User:
 			s.createChatRoom(msg, createHash(self.loginId))
 
 		elif messageType == 'u':
-			print('creating user')
 			dir = 'server/userCredentials/'
-
 			hashedCredentials = createHash(msg)
 			if not os.path.exists(dir):
 				os.makedirs(dir)
 			file = open(dir+numUsers()+'.txt', 'w')
 			file.write(hashedCredentials)
 			incFileValBy('server/numUsers.txt', 1)
+			print('User created')
 
 	def decryptUserCredentials(file):
 		priKey = RSA.import_key(open('keys/user/pass_private.pem').read())

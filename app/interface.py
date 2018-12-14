@@ -27,8 +27,8 @@ user = 0
 
 if i == 'l':
 	loginId = input('Login Id:')
-	#password = getpass.getpass()
-	password = input('Password:')
+	password = getpass.getpass()
+	#password = input('Password:')
 	if getValidUser(loginId, password):
 		print('Welcome', loginId)
 		user = User(loginId, password)
@@ -38,7 +38,7 @@ if i == 'l':
 elif i == 'c':
 	newCredentials = enterNewCredentials()
 	newLoginId = newCredentials[0]
-	newPassword = newCredentials[1]
+	newLoginPassword = newCredentials[1]
 
 	while s.userExists(newLoginId):
 		print('User Exists. Try Again.')
@@ -67,10 +67,10 @@ else:
 user.joinChatRoom(chatroom)
 
 
-# if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
-# 	os.system('clear')
-# elif platform == 'win64' or platform == 'win32':
-# 	os.system('cls')
+if platform == 'linux' or platform == 'linux 2' or platform == 'darwin':
+	os.system('clear')
+elif platform == 'win64' or platform == 'win32':
+	os.system('cls')
 
 
 print('Entered chatroom', chatroom)

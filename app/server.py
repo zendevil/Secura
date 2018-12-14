@@ -46,11 +46,16 @@ class Server:
 
 	def userPassCorrect(self, loginId, password):
 		dir = 'server/userCredentials/'
-		hashedCredentials = createHash('loginId='+str(loginId)+'password='+password)
+		msg = 'loginId='+loginId+'password='+password
+		hashedCredentials = createHash(msg)
 		for filename in os.listdir(dir):
 			file = open(dir+filename, 'r')
-			print(dir+filename)
-			if file.read() == hashedCredentials:
+			#print(dir+filename)
+			fileHashCreds = file.read()
+			# print('File', fileHashCreds)
+			# print('New', hashedCredentials)
+			
+			if fileHashCreds == hashedCredentials:
 				return True
 		return False
 

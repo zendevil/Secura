@@ -1,4 +1,4 @@
-Please find all illustrations here: https://github.com/zendevil/Secura/blob/master/Secura.pdf. 
+Please find all illustrations here: https://zendevil.github.io/Secura.pdf. 
 # Secura: A light, high-security messaging service 
 ## Overview
 - Everyone establishes a shared secret with the server using an out-of-band channel. 

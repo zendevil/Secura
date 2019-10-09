@@ -1,3 +1,4 @@
+Please find all illustrations in Secura.pdf. 
 # Secura: A light, high-security messaging service 
 ## Overview
 - Everyone establishes a shared secret with the server using an out-of-band channel. 
